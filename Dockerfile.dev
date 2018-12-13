@@ -1,0 +1,29 @@
+FROM elixir:1.7.4
+
+RUN apt-get update && \
+    apt-get install -y inotify-tools net-tools && \
+    rm -rf /var/lib/apt/lists/*
+
+ARG LIBSODIUM_VER=1.0.16
+RUN wget -q https://download.libsodium.org/libsodium/releases/libsodium-${LIBSODIUM_VER}.tar.gz && \
+    tar -xf libsodium-${LIBSODIUM_VER}.tar.gz && \
+    cd libsodium-${LIBSODIUM_VER} && \
+    ./configure && \
+    make && make check && \
+    make install && \
+    cd .. && \
+    rm -rf libsodium*
+
+ENV MIX_HOME=/elixir/.mix \
+    HEX_HOME=/elixir/.hex \
+    REBAR_CACHE_DIR=/elixir/rebar-cache \
+    LANG=C.UTF-8 \
+    LANGUAGE="en_US:" \
+    LC_ALL=C.UTF-8
+
+RUN mkdir -p /elixir/.mix && \
+    mkdir -p /elixir/.hex && \
+    mkdir -p /elixir/rebar-cache && \
+    mix local.hex --force && \
+    mix local.rebar --force && \
+    chmod -R 777 /elixir
