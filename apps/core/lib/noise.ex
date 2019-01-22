@@ -6,7 +6,7 @@ defmodule Volta.Noise do
   @protocol_name "Noise_XK_secp256k1_ChaChaPoly_SHA256"
   @prologue "lightning"
 
-  def new(role, remote_pub_key, local_key, opts \\ []) do
+  def new(role, remote_pub_key, local_key, opts) do
     ck = :crypto.hash(:sha256, @protocol_name)
     h = :crypto.hash(:sha256, ck <> @prologue)
     h = case role do
@@ -18,6 +18,18 @@ defmodule Volta.Noise do
         |> Map.put(:h, h)
         |> Map.put(:ck, ck)
         |> Map.put(:remote_pub_key, KeyUtils.decompress(remote_pub_key))
+        |> Map.put(:local_key, local_key) 
+    }
+  end
+
+  def new(:responder, local_key, opts) do
+    ck = :crypto.hash(:sha256, @protocol_name)
+    h = :crypto.hash(:sha256, ck <> @prologue)
+    h = sha256(h, KeyUtils.compress(local_key[:pub]))
+    {:ok, initial_state(opts)
+        |> Map.put(:role, :responder)
+        |> Map.put(:h, h)
+        |> Map.put(:ck, ck)
         |> Map.put(:local_key, local_key) 
     }
   end
@@ -241,6 +253,12 @@ defmodule Volta.Noise do
 
   def decrypt_message(state, encrypted_payload) do
     {state, plaintext} = decrypt_item(state, encrypted_payload)
+    {:ok, state, plaintext}
+  end
+
+  def decrypt(state, <<le::bytes-size(18), ciphertext::binary>>) do
+    {:ok, state, _l} = decrypt_length(state, le)
+    {:ok, state, plaintext} = decrypt_message(state, ciphertext)
     {:ok, state, plaintext}
   end
 

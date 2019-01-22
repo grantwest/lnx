@@ -13,7 +13,7 @@ RUN wget -q https://download.libsodium.org/libsodium/releases/libsodium-${LIBSOD
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/x86_64-linux-gnu
 
 RUN apt-get update && \
-    apt-get install -y inotify-tools net-tools libgmp3-dev && \
+    apt-get install -y inotify-tools net-tools libgmp3-dev xxd tcpdump && \
     rm -rf /var/lib/apt/lists/*
 
 ENV MIX_HOME=/elixir/.mix \
