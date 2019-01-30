@@ -1,21 +1,30 @@
-# Volta
+# Bitcoin Volta
 
-**TODO: Add description**
+## Development & Testing
 
-## Installation
+How to run tests:
+```bash
+# start interactive docker container
+./interactive.sh
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `volta` to your list of dependencies in `mix.exs`:
+# download dependencies
+mix deps.get
 
-```elixir
-def deps do
-  [
-    {:volta, "~> 0.1.0"}
-  ]
-end
+# run tests
+mix test
+
+# run all tests
+mix test --include slow
+
+# run tests every time you save a file
+mix test.watch
+
+# run tests from just one module (core)
+cd apps/core
+mix test.watch
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/volta](https://hexdocs.pm/volta).
-
+Things to know about bitcoind & lnd integration tests:
+- Runtime files for lnd & bitcoind are localted in `temp`
+- Binaries for lnd & bitcoind are downloaded to `resources` the first time the tests run
+- The contents of `temp` are deleted as the first step after running `mix test` or its varients

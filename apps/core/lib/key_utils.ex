@@ -2,7 +2,7 @@ defmodule Volta.KeyUtils do
   require Integer
   use Bitwise
 
-  def valid_public_key?(<<4, x::unsigned-size(256), y::unsigned-size(256)>>), do: true
+  def valid_public_key?(<<4, _x::unsigned-size(256), _y::unsigned-size(256)>>), do: true
   def valid_public_key?(<<2, _::bytes-size(32)>>), do: true
   def valid_public_key?(<<3, _::bytes-size(32)>>), do: true
   def valid_public_key?(_other), do: false
@@ -17,7 +17,7 @@ defmodule Volta.KeyUtils do
   def xy(<<2, _::bytes-size(32)>> = key), do: key |> actually_decompress() |> xy()
   def xy(<<3, _::bytes-size(32)>> = key), do: key |> actually_decompress() |> xy()
 
-  def compress(<<4, x::bytes-size(32), y::unsigned-size(256)>> = key) do
+  def compress(<<4, x::bytes-size(32), y::unsigned-size(256)>>) do
     if Integer.is_odd(y) do
       <<3>>
     else
@@ -46,21 +46,8 @@ defmodule Volta.KeyUtils do
     <<4, x::unsigned-size(256), y::unsigned-size(256)>>
   end
 
-
-  defp power(0, _), do: 1
-  defp power(1, _), do: 1
-  defp power(n, p) when p >= 0 and n >= 0 do
-    _power(n, p, 1)
-  end
-
   defp power(n, p, modulo) when p >= 0 and n > 0 do
     _power(n, p, modulo, 1)
-  end
-
-  defp _power(_, 0, accum), do: accum
-
-  defp _power(n, p, accum) do
-    _power(n, p - 1, n * accum)
   end
 
   defp _power(_, 0, _, accum), do: accum

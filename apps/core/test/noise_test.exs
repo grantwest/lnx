@@ -1,5 +1,5 @@
 defmodule Volta.NoiseTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias Volta.Noise
   alias Volta.KeyUtils
 
@@ -110,7 +110,6 @@ defmodule Volta.NoiseTest do
       priv: "2222222222222222222222222222222222222222222222222222222222222222" |> bin(),
       pub:  "02466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27" |> pubkey(),
     }
-    initiator_pk = "028d7500dd4c12685d1f568b4c2b5048e8534b873319f3a8daa612b469132ec7f7" |> bin()
     act1_input   = "00036360e856310ce5d294e8be33fc807077dc56ac80d95d9cd4ddbd21325eff73f70df6086551151f58b8afe6c195782c6a" |> bin()
     init_h       = "8401b3fdcaaa710b5405400536a3d5fd7792fe8e7fe29cd8b687216fe323ecbd"
     init_ck      = "2640f52eebcd9e882958951c794250eedb28002c05d7dc2ea0f195406042caf1"
@@ -133,7 +132,7 @@ defmodule Volta.NoiseTest do
     act3_rk      = "969ab31b4d288cedf6218839b27a3e2140827047f2c0f01bf5c04435d43511a9"
     act3_sk      = "bb9020b8965f4df047e07f955f3c4b88418984aadc5cdb35096b9ea8fa5c3442"
 
-    {:ok, n} = Noise.new(:responder, initiator_pk, responder_key, [e: e_key])
+    {:ok, n} = Noise.new(:responder, responder_key, [e: e_key])
     assert n[:h]       |> hex() == init_h
     assert n[:ck]      |> hex() == init_ck
 
@@ -171,9 +170,8 @@ defmodule Volta.NoiseTest do
       priv: "2222222222222222222222222222222222222222222222222222222222222222" |> bin(),
       pub:  "02466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27" |> pubkey(),
     }
-    initiator_pk = "028d7500dd4c12685d1f568b4c2b5048e8534b873319f3a8daa612b469132ec7f7" |> pubkey()
     #act1_output = "00036360e856310ce5d294e8be33fc807077dc56ac80d95d9cd4ddbd21325eff73f70df6086551151f58b8afe6c195782c6a"
-    {:ok, n} = Noise.new(:responder, initiator_pk, responder_key, [e: e_key])
+    {:ok, n} = Noise.new(:responder, responder_key, [e: e_key])
     Noise.act1(n, act1_input)
   end
 
@@ -249,7 +247,7 @@ defmodule Volta.NoiseTest do
       pub:  "02466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27" |> pubkey(),
     }
     {:ok, n1} = Noise.new(:initiator, responder_key[:pub], initiator_key, [e: initiator_e_key])
-    {:ok, n2} = Noise.new(:responder, initiator_key[:pub], responder_key, [e: responder_e_key])
+    {:ok, n2} = Noise.new(:responder, responder_key, [e: responder_e_key])
     {:ok, n1, output} = Noise.act1(n1)
     {:ok, n2        } = Noise.act1(n2, output)
     {:ok, n2, output} = Noise.act2(n2)
@@ -304,8 +302,8 @@ defmodule Volta.NoiseTest do
       priv: "2121212121212121212121212121212121212121212121212121212121212121" |> bin(),
       pub:  "028d7500dd4c12685d1f568b4c2b5048e8534b873319f3a8daa612b469132ec7f7" |> pubkey(),
     }
-    {:ok, n1} = Noise.new(:initiator, responder_key[:pub], initiator_key)
-    {:ok, n2} = Noise.new(:responder, initiator_key[:pub], responder_key)
+    {:ok, n1} = Noise.new(:initiator, responder_key[:pub], initiator_key, [])
+    {:ok, n2} = Noise.new(:responder, responder_key, [])
     {:ok, n1, output} = Noise.act1(n1)
     {:ok, n2        } = Noise.act1(n2, output)
     {:ok, n2, output} = Noise.act2(n2)
@@ -321,6 +319,14 @@ defmodule Volta.NoiseTest do
     
     {:ok, _n2, decrypted} = Noise.decrypt_message(n2, ciphertext)
     assert decrypted == "hello"
+  end
+
+  test "do not encrypt messages that are too big" do
+    #TODO
+  end
+
+  test "error on receiving message length that is too big" do
+    #TODO
   end
 
   defp hex(nil), do: nil
