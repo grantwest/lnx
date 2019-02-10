@@ -8,6 +8,7 @@ defmodule Volta.LightningMsgTest do
   alias Volta.LightningMsg.PongMsg
   alias Volta.LightningMsg.OpenChannelMsg
   alias Volta.LightningMsg.AcceptChannelMsg
+  alias Volta.LightningMsg.FundingCreatedMsg
 
   test "parse unknown message" do
     msg_binary = <<
@@ -181,6 +182,27 @@ defmodule Volta.LightningMsgTest do
       htlc_basepoint: htlc_basepoint,
       first_per_commitment_point: first_per_commitment_point,
       shutdown_scriptpubkey: :none
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
+
+  test "parse & encode funding_created msg" do
+    signature = <<:rand.uniform(9999)::size(512)>>
+
+    msg_binary = <<
+      0, 34,                   # type = 34
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # temporary_channel_id = 2
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, # funding_txid = 3
+      0, 4 # funding_output_index = 4
+    >> 
+    <> signature
+
+    msg = %FundingCreatedMsg{
+      temporary_channel_id: 2,
+      funding_txid: 3,
+      funding_output_index: 4,
+      signature: signature
     }
     assert LightningMsg.parse(msg_binary) == msg
     assert LightningMsg.encode(msg) == msg_binary

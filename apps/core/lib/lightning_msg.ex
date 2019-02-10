@@ -5,6 +5,7 @@ defmodule Volta.LightningMsg do
   @pong 19
   @open_channel 32
   @accept_channel 33
+  @funding_created 34
 
   defmodule UnknownMsg do
     defstruct [:type, :payload]
@@ -67,6 +68,15 @@ defmodule Volta.LightningMsg do
       :htlc_basepoint,
       :first_per_commitment_point,
       :shutdown_scriptpubkey,
+    ]
+  end
+
+  defmodule FundingCreatedMsg do
+    defstruct [
+      :temporary_channel_id,
+      :funding_txid,
+      :funding_output_index,
+      :signature,
     ]
   end
 
@@ -181,6 +191,21 @@ defmodule Volta.LightningMsg do
     }
   end
 
+  def parse_type(
+        @funding_created,
+        <<temporary_channel_id::unsigned-big-size(256),
+          funding_txid::unsigned-big-size(256),
+          funding_output_index::unsigned-big-size(16),
+          signature::bytes-size(64),
+          >>) do
+    %FundingCreatedMsg{
+      temporary_channel_id: temporary_channel_id,
+      funding_txid: funding_txid,
+      funding_output_index: funding_output_index,
+      signature: signature,
+    }
+  end
+
   def parse_type(type, payload) do
     %UnknownMsg{type: type, payload: payload}
   end
@@ -265,6 +290,16 @@ defmodule Volta.LightningMsg do
       msg.delayed_payment_basepoint::bytes-size(33),
       msg.htlc_basepoint::bytes-size(33),
       msg.first_per_commitment_point::bytes-size(33),
+    >>
+  end
+
+  def encode(%FundingCreatedMsg{} = msg) do
+    <<
+      @funding_created::unsigned-big-size(16),
+      msg.temporary_channel_id::unsigned-big-size(256),
+      msg.funding_txid::unsigned-big-size(256),
+      msg.funding_output_index::unsigned-big-size(16),
+      msg.signature::bytes-size(64)
     >>
   end
 
