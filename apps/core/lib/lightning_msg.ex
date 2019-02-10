@@ -4,6 +4,7 @@ defmodule Volta.LightningMsg do
   @ping 18
   @pong 19
   @open_channel 32
+  @accept_channel 33
 
   defmodule UnknownMsg do
     defstruct [:type, :payload]
@@ -45,6 +46,26 @@ defmodule Volta.LightningMsg do
       :htlc_basepoint,
       :first_per_commitment_point,
       :channel_flags,
+      :shutdown_scriptpubkey,
+    ]
+  end
+
+  defmodule AcceptChannelMsg do
+    defstruct [
+      :temporary_channel_id,
+      :dust_limit_satoshis,
+      :max_htlc_value_in_flight_msat,
+      :channel_reserve_satoshis,
+      :htlc_minimum_msat,
+      :minimum_depth,
+      :to_self_delay,
+      :max_accepted_htlcs,
+      :funding_pubkey,
+      :revocation_basepoint,
+      :payment_basepoint,
+      :delayed_payment_basepoint,
+      :htlc_basepoint,
+      :first_per_commitment_point,
       :shutdown_scriptpubkey,
     ]
   end
@@ -124,6 +145,42 @@ defmodule Volta.LightningMsg do
     }
   end
 
+  def parse_type(
+        @accept_channel,
+        <<temporary_channel_id::unsigned-big-size(256),
+          dust_limit_satoshis::unsigned-big-size(64),
+          max_htlc_value_in_flight_msat::unsigned-big-size(64),
+          channel_reserve_satoshis::unsigned-big-size(64),
+          htlc_minimum_msat::unsigned-big-size(64),
+          minimum_depth::unsigned-big-size(32),
+          to_self_delay::unsigned-big-size(16),
+          max_accepted_htlcs::unsigned-big-size(16),
+          funding_pubkey::bytes-size(33),
+          revocation_basepoint::bytes-size(33),
+          payment_basepoint::bytes-size(33),
+          delayed_payment_basepoint::bytes-size(33),
+          htlc_basepoint::bytes-size(33),
+          first_per_commitment_point::bytes-size(33),
+          >>) do
+    %AcceptChannelMsg{
+      temporary_channel_id: temporary_channel_id,
+      dust_limit_satoshis: dust_limit_satoshis,
+      max_htlc_value_in_flight_msat: max_htlc_value_in_flight_msat,
+      channel_reserve_satoshis: channel_reserve_satoshis,
+      htlc_minimum_msat: htlc_minimum_msat,
+      minimum_depth: minimum_depth,
+      to_self_delay: to_self_delay,
+      max_accepted_htlcs: max_accepted_htlcs,
+      funding_pubkey: funding_pubkey,
+      revocation_basepoint: revocation_basepoint,
+      payment_basepoint: payment_basepoint,
+      delayed_payment_basepoint: delayed_payment_basepoint,
+      htlc_basepoint: htlc_basepoint,
+      first_per_commitment_point: first_per_commitment_point,
+      shutdown_scriptpubkey: :none,
+    }
+  end
+
   def parse_type(type, payload) do
     %UnknownMsg{type: type, payload: payload}
   end
@@ -188,6 +245,26 @@ defmodule Volta.LightningMsg do
       msg.htlc_basepoint::bytes-size(33),
       msg.first_per_commitment_point::bytes-size(33),
       msg.channel_flags,
+    >>
+  end
+
+  def encode(%AcceptChannelMsg{} = msg) do
+    <<
+      @accept_channel::unsigned-big-size(16),
+      msg.temporary_channel_id::unsigned-big-size(256),
+      msg.dust_limit_satoshis::unsigned-big-size(64),
+      msg.max_htlc_value_in_flight_msat::unsigned-big-size(64),
+      msg.channel_reserve_satoshis::unsigned-big-size(64),
+      msg.htlc_minimum_msat::unsigned-big-size(64),
+      msg.minimum_depth::unsigned-big-size(32),
+      msg.to_self_delay::unsigned-big-size(16),
+      msg.max_accepted_htlcs::unsigned-big-size(16),
+      msg.funding_pubkey::bytes-size(33),
+      msg.revocation_basepoint::bytes-size(33),
+      msg.payment_basepoint::bytes-size(33),
+      msg.delayed_payment_basepoint::bytes-size(33),
+      msg.htlc_basepoint::bytes-size(33),
+      msg.first_per_commitment_point::bytes-size(33),
     >>
   end
 
