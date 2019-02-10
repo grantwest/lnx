@@ -3,6 +3,7 @@ defmodule Volta.LightningMsg do
   @error 17
   @ping 18
   @pong 19
+  @open_channel 32
 
   defmodule UnknownMsg do
     defstruct [:type, :payload]
@@ -22,6 +23,30 @@ defmodule Volta.LightningMsg do
 
   defmodule PongMsg do
     defstruct [:pong_bytes]
+  end
+
+  defmodule OpenChannelMsg do
+    defstruct [
+      :chain_hash,
+      :temporary_channel_id,
+      :funding_satoshis,
+      :push_msat,
+      :dust_limit_satoshis,
+      :max_htlc_value_in_flight_msat,
+      :channel_reserve_satoshis,
+      :htlc_minimum_msat,
+      :feerate_per_kw,
+      :to_self_delay,
+      :max_accepted_htlcs,
+      :funding_pubkey,
+      :revocation_basepoint,
+      :payment_basepoint,
+      :delayed_payment_basepoint,
+      :htlc_basepoint,
+      :first_per_commitment_point,
+      :channel_flags,
+      :shutdown_scriptpubkey,
+    ]
   end
 
   def parse(<<type::unsigned-big-size(16), payload::binary>>) do
@@ -53,6 +78,50 @@ defmodule Volta.LightningMsg do
         @pong,
         <<ignore_len::unsigned-big-size(16), _::bytes-size(ignore_len)>>) do
     %PongMsg{pong_bytes: ignore_len}        
+  end
+
+  def parse_type(
+        @open_channel,
+        <<chain_hash::unsigned-big-size(256),
+          temporary_channel_id::unsigned-big-size(256),
+          funding_satoshis::unsigned-big-size(64),
+          push_msat::unsigned-big-size(64),
+          dust_limit_satoshis::unsigned-big-size(64),
+          max_htlc_value_in_flight_msat::unsigned-big-size(64),
+          channel_reserve_satoshis::unsigned-big-size(64),
+          htlc_minimum_msat::unsigned-big-size(64),
+          feerate_per_kw::unsigned-big-size(32),
+          to_self_delay::unsigned-big-size(16),
+          max_accepted_htlcs::unsigned-big-size(16),
+          funding_pubkey::bytes-size(33),
+          revocation_basepoint::bytes-size(33),
+          payment_basepoint::bytes-size(33),
+          delayed_payment_basepoint::bytes-size(33),
+          htlc_basepoint::bytes-size(33),
+          first_per_commitment_point::bytes-size(33),
+          channel_flags,
+          >>) do
+    %OpenChannelMsg{
+      chain_hash: chain_hash,
+      temporary_channel_id: temporary_channel_id,
+      funding_satoshis: funding_satoshis,
+      push_msat: push_msat,
+      dust_limit_satoshis: dust_limit_satoshis,
+      max_htlc_value_in_flight_msat: max_htlc_value_in_flight_msat,
+      channel_reserve_satoshis: channel_reserve_satoshis,
+      htlc_minimum_msat: htlc_minimum_msat,
+      feerate_per_kw: feerate_per_kw,
+      to_self_delay: to_self_delay,
+      max_accepted_htlcs: max_accepted_htlcs,
+      funding_pubkey: funding_pubkey,
+      revocation_basepoint: revocation_basepoint,
+      payment_basepoint: payment_basepoint,
+      delayed_payment_basepoint: delayed_payment_basepoint,
+      htlc_basepoint: htlc_basepoint,
+      first_per_commitment_point: first_per_commitment_point,
+      channel_flags: channel_flags,
+      shutdown_scriptpubkey: :none,
+    }
   end
 
   def parse_type(type, payload) do
@@ -95,6 +164,30 @@ defmodule Volta.LightningMsg do
       @pong::unsigned-big-size(16),
       msg.pong_bytes::unsigned-big-size(16), 
       0::size(ignore_len)
+    >>
+  end
+
+  def encode(%OpenChannelMsg{} = msg) do
+    <<
+      @open_channel::unsigned-big-size(16),
+      msg.chain_hash::unsigned-big-size(256),
+      msg.temporary_channel_id::unsigned-big-size(256),
+      msg.funding_satoshis::unsigned-big-size(64),
+      msg.push_msat::unsigned-big-size(64),
+      msg.dust_limit_satoshis::unsigned-big-size(64),
+      msg.max_htlc_value_in_flight_msat::unsigned-big-size(64),
+      msg.channel_reserve_satoshis::unsigned-big-size(64),
+      msg.htlc_minimum_msat::unsigned-big-size(64),
+      msg.feerate_per_kw::unsigned-big-size(32),
+      msg.to_self_delay::unsigned-big-size(16),
+      msg.max_accepted_htlcs::unsigned-big-size(16),
+      msg.funding_pubkey::bytes-size(33),
+      msg.revocation_basepoint::bytes-size(33),
+      msg.payment_basepoint::bytes-size(33),
+      msg.delayed_payment_basepoint::bytes-size(33),
+      msg.htlc_basepoint::bytes-size(33),
+      msg.first_per_commitment_point::bytes-size(33),
+      msg.channel_flags,
     >>
   end
 
