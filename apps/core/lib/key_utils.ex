@@ -32,6 +32,11 @@ defmodule Volta.KeyUtils do
   def decompress(<<2, _::bytes-size(32)>> = key), do: actually_decompress(key)
   def decompress(<<3, _::bytes-size(32)>> = key), do: actually_decompress(key)
 
+  def pub_from_priv(private_key) do
+    {public_key, _} = :crypto.generate_key(:ecdh, :secp256k1, private_key)
+    public_key
+  end
+
   defp actually_decompress(<<sign_byte, x::unsigned-size(256)>>) do
     a = 0
     b = 7

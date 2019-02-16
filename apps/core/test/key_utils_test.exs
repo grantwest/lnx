@@ -46,6 +46,12 @@ defmodule Volta.KeyUtilsTest do
     
   end
 
+  test "public key from private key" do
+    priv = "1111111111111111111111111111111111111111111111111111111111111111" |> bin()
+    expected_pub = "034f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa"
+    assert KeyUtils.pub_from_priv(priv) |> KeyUtils.compress() |> hex() == expected_pub
+  end
+
   defp hex(b) do
     Base.encode16(b, case: :lower)
   end
