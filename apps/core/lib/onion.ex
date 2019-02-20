@@ -2,6 +2,7 @@ defmodule Volta.Core.Onion do
   alias Volta.KeyUtils
 
   defmodule OnionPacketV0 do
+    alias Volta.Core.Onion.PerHop
     @num_max_hops 20
     @hop_data_size 65
     @routing_info_size (@num_max_hops * @hop_data_size)
@@ -14,27 +15,51 @@ defmodule Volta.Core.Onion do
       :hmac,
     ]
 
-    def create(payment_path, session_key, associated_data) do
+    def encode(packet) do
+      <<
+        packet.version::unsigned-big-size(8),
+      >> 
+      <> packet.public_key
+      <> packet.hops_data
+      <> packet.hmac
+    end
 
-      {reverse_hop_shared_secrets, ephem_key} = 
+    defp hex(b) do
+      Base.encode16(b, case: :lower)
+    end
+
+    def create(payment_path, session_key, associated_data) do
+      [packet | _] = create_with_intermediates(payment_path, session_key, associated_data)
+      packet
+    end
+
+    def create_with_intermediates(payment_path, session_key, associated_data) do
+
+      {reverse_hop_shared_secrets, ephem_key, blinding_factors, ephem_keys} = 
       payment_path
       |> Enum.map(fn {pub_key, _payload} -> pub_key end)
-      |> Enum.reduce({[], session_key}, fn hop_pub_key, {hop_shared_secrets, ephem_key} ->
+      |> Enum.reduce({[], session_key, [], []}, fn hop_pub_key, {hop_shared_secrets, ephem_key, bfs, eks} ->
         {:ok, ecdh_result} = :libsecp256k1.ec_pubkey_tweak_mul(hop_pub_key, ephem_key)
         hop_shared_secret = :crypto.hash(:sha256, KeyUtils.compress(ecdh_result))
 
         ephem_pub_key = KeyUtils.pub_from_priv(ephem_key)
         blinding_factor = :crypto.hash(:sha256, KeyUtils.compress(ephem_pub_key) <> hop_shared_secret)
         {:ok, ephem_key} = :libsecp256k1.ec_privkey_tweak_mul(ephem_key, blinding_factor)
-
-        {[hop_shared_secret | hop_shared_secrets], ephem_key}
+        
+        {
+          [hop_shared_secret | hop_shared_secrets], 
+          ephem_key,
+          [blinding_factor | bfs],
+          [ephem_pub_key | eks],
+        }
       end)
 
       hop_shared_secrets = Enum.reverse(reverse_hop_shared_secrets) |> Enum.to_list()
 
+      num_hops = length(payment_path)
       filler = generate_filler(
         "rho", 
-        length(payment_path), 
+        num_hops, 
         @hop_data_size, 
         hop_shared_secrets
       )
@@ -43,30 +68,65 @@ defmodule Volta.Core.Onion do
       empty_mix_header = <<0::size(empty_header_bits)>>
       empty_hmac = <<0::size(256)>>
 
-      {hmacs, mix_header, _} = 
-      Enum.zip(payment_path, hop_shared_secrets)
-      |> Enum.reverse()
-      |> Enum.map(fn {{a, b}, c} -> {a, b, c} end)
-      |> Enum.reduce({[], empty_mix_header, empty_hmac}, fn {hop_pub_key, hop_payload, shared_secret}, {hmacs, mix_header, hmac} -> 
+      {last_hmac, mix_header, _, rho_keys, mu_keys, plain_routing_infos, encrypted_routing_infos} = 
+      Enum.zip(Enum.reverse(payment_path), reverse_hop_shared_secrets)
+      |> Enum.with_index()
+      |> Enum.map(fn {{{a, b}, c}, i} -> {i, a, b, c} end)
+      |> Enum.reduce(
+        {empty_hmac, empty_mix_header, empty_hmac, [], [], [], []}, 
+        fn {i, hop_pub_key, hop_payload, shared_secret}, {last_hmac, mix_header, hmac, rho_keys, mu_keys, pri, eri} -> 
+          
         rho_key = generate_key("rho", shared_secret)
         mu_key = generate_key("mu", shared_secret)
 
+        hop_data = <<0>> <> PerHop.encode(hop_payload) <> hmac
+
         stream_bytes = generate_cipher_stream(rho_key, @num_stream_bytes) |> binary_part(0, @routing_info_size)
-        mix_header = hop_payload <> binary_part(mix_header, @hop_data_size, @routing_info_size - @hop_data_size)
+        mix_header = hop_data <> binary_part(mix_header, @hop_data_size, @routing_info_size - @hop_data_size)
+        plain_routing_info = mix_header
         mix_header = :crypto.exor(mix_header, stream_bytes) 
+        encrypted_routing_info = mix_header
+
+        mix_header = 
+        if i == 0 do
+          mix_length = byte_size(mix_header) - byte_size(filler)
+          binary_part(mix_header, 0, mix_length) <> filler
+        else
+          mix_header
+        end
 
         packet = mix_header <> associated_data
         next_hmac = calc_mac(mu_key, packet)
 
-        {[hmac | hmacs], mix_header, next_hmac}
+        {
+          hmac, 
+          mix_header, 
+          next_hmac, 
+          [rho_key | rho_keys], 
+          [mu_key | mu_keys],
+          [plain_routing_info | pri],
+          [encrypted_routing_info | eri],
+        }
       end)
 
-      %OnionPacketV0{
+      packet = %OnionPacketV0{
         version: 0,
-        public_key: KeyUtils.pub_from_priv(session_key),
+        public_key: KeyUtils.pub_from_priv(session_key) |> KeyUtils.compress(),
         hops_data: mix_header,
-        hmac: List.last(hmacs),
+        hmac: last_hmac,
       }
+
+      [
+        packet,
+        hop_shared_secrets,
+        blinding_factors |> Enum.reverse() |> Enum.to_list(),
+        ephem_keys |> Enum.reverse() |> Enum.to_list(),
+        filler,
+        rho_keys,
+        mu_keys,
+        plain_routing_infos,
+        encrypted_routing_infos,
+      ]
 
     end
 
@@ -76,6 +136,9 @@ defmodule Volta.Core.Onion do
       empty_filler = <<0::size(filler_size_bits)>>
       pad_size_bits = hop_size * 8
       pad = <<0::size(pad_size_bits)>>
+
+      filler_start = (@num_max_hops - num_hops + 1) * hop_size
+      filler_final_size = filler_size - filler_start
       
       shared_secrets
       |> Enum.take(num_hops - 1)
@@ -85,6 +148,7 @@ defmodule Volta.Core.Onion do
         :crypto.exor(filler <> pad, stream_bytes) 
         |> binary_part(hop_size, filler_size)
       end)
+      |> binary_part(filler_start, filler_final_size)
     end
 
     defp generate_key(key, shared_secret) do
@@ -97,8 +161,8 @@ defmodule Volta.Core.Onion do
       :enacl.stream_chacha20(size, nonce, key)
     end
 
-    defp calc_mac(key, data) do
-      
+    defp calc_mac(key, msg) do
+      :libsecp256k1.hmac_sha256(key, msg)
     end
 
   end
