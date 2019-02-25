@@ -101,7 +101,7 @@ defmodule Volta.Core.OnionTest do
       {pubkey_4, hop_payload_4},
     ]
 
-    [packet, shared_secrets, blinding_factors, ephem_keys, filler, rho_keys, mu_keys, routing_info_unencrypted, routing_info_encrypted | _] = 
+    [packet, shared_secrets, blinding_factors, ephem_keys, filler, rho_keys, mu_keys, routing_info_unencrypted, routing_info_encrypted, hmac_datas, hmacs | _] = 
       OnionPacketV0.create_with_intermediates(hops, session_key, associated_data)
 
     assert Enum.at(shared_secrets, 0) |> hex() == hop_shared_secret_0
@@ -138,14 +138,28 @@ defmodule Volta.Core.OnionTest do
 
     assert Enum.at(routing_info_unencrypted, 4) |> hex() == routing_info_unencrypted_4
     assert Enum.at(routing_info_encrypted,   4) |> hex() == routing_info_encrypted_4
+    assert Enum.at(hmac_datas,               4) |> hex() == hmac_data_4
+    assert Enum.at(hmacs,                    4) |> hex() == hmac_4
+
     assert Enum.at(routing_info_unencrypted, 3) |> hex() == routing_info_unencrypted_3
     assert Enum.at(routing_info_encrypted,   3) |> hex() == routing_info_encrypted_3
+    assert Enum.at(hmac_datas,               3) |> hex() == hmac_data_3
+    assert Enum.at(hmacs,                    3) |> hex() == hmac_3
+    
     assert Enum.at(routing_info_unencrypted, 2) |> hex() == routing_info_unencrypted_2
     assert Enum.at(routing_info_encrypted,   2) |> hex() == routing_info_encrypted_2
+    assert Enum.at(hmac_datas,               2) |> hex() == hmac_data_2
+    assert Enum.at(hmacs,                    2) |> hex() == hmac_2
+    
     assert Enum.at(routing_info_unencrypted, 1) |> hex() == routing_info_unencrypted_1
     assert Enum.at(routing_info_encrypted,   1) |> hex() == routing_info_encrypted_1
+    assert Enum.at(hmac_datas,               1) |> hex() == hmac_data_1
+    assert Enum.at(hmacs,                    1) |> hex() == hmac_1
+    
     assert Enum.at(routing_info_unencrypted, 0) |> hex() == routing_info_unencrypted_0
     assert Enum.at(routing_info_encrypted,   0) |> hex() == routing_info_encrypted_0
+    assert Enum.at(hmac_datas,               0) |> hex() == hmac_data_0
+    assert Enum.at(hmacs,                    0) |> hex() == hmac_0
 
     assert packet.version == 0
     assert hex(packet.public_key) == String.slice(onion_packet, 1*2, 33*2)

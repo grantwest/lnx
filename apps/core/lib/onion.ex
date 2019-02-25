@@ -68,24 +68,23 @@ defmodule Volta.Core.Onion do
       empty_mix_header = <<0::size(empty_header_bits)>>
       empty_hmac = <<0::size(256)>>
 
-      {last_hmac, mix_header, _, rho_keys, mu_keys, plain_routing_infos, encrypted_routing_infos} = 
+      {last_hmac, mix_header, _, rho_keys, mu_keys, plain_routing_infos, encrypted_routing_infos, hmac_datas, hmacs} = 
       Enum.zip(Enum.reverse(payment_path), reverse_hop_shared_secrets)
       |> Enum.with_index()
       |> Enum.map(fn {{{a, b}, c}, i} -> {i, a, b, c} end)
       |> Enum.reduce(
-        {empty_hmac, empty_mix_header, empty_hmac, [], [], [], []}, 
-        fn {i, hop_pub_key, hop_payload, shared_secret}, {last_hmac, mix_header, hmac, rho_keys, mu_keys, pri, eri} -> 
+        {empty_hmac, empty_mix_header, empty_hmac, [], [], [], [], [], []}, 
+        fn {i, hop_pub_key, hop_payload, shared_secret}, {last_hmac, mix_header, hmac, rho_keys, mu_keys, pri, eri, hmac_datas, hmacs} -> 
           
         rho_key = generate_key("rho", shared_secret)
         mu_key = generate_key("mu", shared_secret)
 
         hop_data = <<0>> <> PerHop.encode(hop_payload) <> hmac
-
-        stream_bytes = generate_cipher_stream(rho_key, @num_stream_bytes) |> binary_part(0, @routing_info_size)
-        mix_header = hop_data <> binary_part(mix_header, @hop_data_size, @routing_info_size - @hop_data_size)
+        mix_header = hop_data <> binary_part(mix_header, 0, @routing_info_size - @hop_data_size)
         plain_routing_info = mix_header
+
+        stream_bytes = generate_cipher_stream(rho_key, @routing_info_size)
         mix_header = :crypto.exor(mix_header, stream_bytes) 
-        encrypted_routing_info = mix_header
 
         mix_header = 
         if i == 0 do
@@ -94,6 +93,7 @@ defmodule Volta.Core.Onion do
         else
           mix_header
         end
+        encrypted_routing_info = mix_header
 
         packet = mix_header <> associated_data
         next_hmac = calc_mac(mu_key, packet)
@@ -106,6 +106,8 @@ defmodule Volta.Core.Onion do
           [mu_key | mu_keys],
           [plain_routing_info | pri],
           [encrypted_routing_info | eri],
+          [packet | hmac_datas],
+          [next_hmac | hmacs],
         }
       end)
 
@@ -126,9 +128,13 @@ defmodule Volta.Core.Onion do
         mu_keys,
         plain_routing_infos,
         encrypted_routing_infos,
+        hmac_datas,
+        hmacs,
       ]
 
     end
+
+    # defp unwrap(packet_binary, )
 
     defp generate_filler(key, num_hops, hop_size, shared_secrets) do
       filler_size = @num_max_hops * hop_size
@@ -156,7 +162,6 @@ defmodule Volta.Core.Onion do
     end
 
     defp generate_cipher_stream(key, size) do
-      # TODO: Constant nonce is ok because each key is used once?
       nonce = <<0::size(64)>>
       :enacl.stream_chacha20(size, nonce, key)
     end
