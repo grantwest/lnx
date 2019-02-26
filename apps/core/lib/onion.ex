@@ -24,14 +24,43 @@ defmodule Volta.Core.Onion do
       <> packet.hmac
     end
 
-    defp hex(b) do
-      Base.encode16(b, case: :lower)
+    def decode(<<
+      version::unsigned-big-size(8),
+      public_key::bytes-size(33),
+      hops_data::bytes-size(1300),
+      hmac::bytes-size(32),
+      >>) do
+      %OnionPacketV0{
+        version: version,
+        public_key: public_key,
+        hops_data: hops_data,
+        hmac: hmac,
+      }
     end
 
     def create(payment_path, session_key, associated_data) do
       [packet | _] = create_with_intermediates(payment_path, session_key, associated_data)
       packet
     end
+
+    # def unwrap(packet, key) do
+    #   shared_secret = generate_shared_secret()
+    #   rho_key = generate_key("rho", shared_secret)
+    #   stream_bytes = generate_cipher_stream(rho_key, @num_stream_bytes)
+    #   padding_bits = @hop_data_size * 8
+    #   header_with_padding = packet.hops_data <> <<0::size(padding_bits)>>
+    #   decrypted = :crypto.exor(header_with_padding, stream_bytes)
+
+    #   {:ok, ecdh_result} = :libsecp256k1.ec_pubkey_tweak_mul(key[:pub], ephem_key)
+    #   hop_shared_secret = :crypto.hash(:sha256, KeyUtils.compress(ecdh_result))
+
+    #   blinding_factor = :crypto.hash(:sha256, KeyUtils.compress(ephem_pub_key) <> hop_shared_secret)
+
+    # end
+
+    # defp generate_shared_secret() do
+      
+    # end
 
     def create_with_intermediates(payment_path, session_key, associated_data) do
 
@@ -99,7 +128,7 @@ defmodule Volta.Core.Onion do
         next_hmac = calc_mac(mu_key, packet)
 
         {
-          hmac, 
+          next_hmac, 
           mix_header, 
           next_hmac, 
           [rho_key | rho_keys], 
@@ -133,8 +162,6 @@ defmodule Volta.Core.Onion do
       ]
 
     end
-
-    # defp unwrap(packet_binary, )
 
     defp generate_filler(key, num_hops, hop_size, shared_secrets) do
       filler_size = @num_max_hops * hop_size
