@@ -112,8 +112,8 @@ defmodule Volta.Core.LightningChannel do
 
   def receive(%{state: :wait_funding_locked, role: :fundee} = ch, %FundingLockedMsg{} = msg) do
     funding_locked_msg = %FundingLockedMsg{
-      channel_id: 0,
-      next_per_commitment_point: 0,
+      channel_id: 1,
+      next_per_commitment_point: 1,
     }
     {:ok, ch, funding_locked_msg}
   end

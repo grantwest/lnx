@@ -67,8 +67,8 @@ defmodule Volta.Core.LightningChannelTest do
       },
 
       funding_locked_msg_b: %FundingLockedMsg{
-        channel_id: 0,
-        next_per_commitment_point: 0,
+        channel_id: 1,
+        next_per_commitment_point: 1,
       }
     }
   }
@@ -95,7 +95,7 @@ defmodule Volta.Core.LightningChannelTest do
     {:ok, ch, to_send} = LightningChannel.receive(ch, msgs[:funding_created_msg])
     assert to_send == msgs[:funding_signed_msg]
     {:ok, ch, to_send} = LightningChannel.receive(ch, msgs[:funding_locked_msg_a])
-    assert to_send = msgs[:funding_locked_msg_b]
+    assert to_send == msgs[:funding_locked_msg_b]
   end  
 
 end
