@@ -1,30 +1,14 @@
-# Bitcoin Volta
+# lnx
 
-## Development & Testing
+Bitcoin lightning network implemented in elixir.
+I am publishing my progress into the public domain in case someone else decides to take up the challenge.
 
-How to run tests:
-```bash
-# start interactive docker container
-./interactive.sh
+Parts implemented here:
 
-# download dependencies
-mix deps.get
+- LN Noise Protocol (key exchange)
+- LN Onion Routing
+- LN message encode/decode
+- Peer connections
+- Opening a channel
 
-# run tests
-mix test
-
-# run all tests
-mix test --include slow
-
-# run tests every time you save a file
-mix test.watch
-
-# run tests from just one module (core)
-cd apps/core
-mix test.watch
-```
-
-Things to know about bitcoind & lnd integration tests:
-- Runtime files for lnd & bitcoind are localted in `temp`
-- Binaries for lnd & bitcoind are downloaded to `resources` the first time the tests run
-- The contents of `temp` are deleted as the first step after running `mix test` or its varients
+This code might be useful to someone who wants to interact with LN nodes via the peer protocol in elixir.

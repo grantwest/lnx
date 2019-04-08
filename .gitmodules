@@ -1,3 +1,0 @@
-[submodule "apps/puppeteer"]
-	path = apps/puppeteer
-	url = git@gitlab.com:grantwest/puppeteer.git
