@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker build --pull -t volta-dev -f Dockerfile.dev .
+docker build -t volta-dev -f Dockerfile.dev .
 
 docker run -it --rm \
 -u $(id -u):$(id -g) \

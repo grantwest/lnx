@@ -23,7 +23,7 @@ defmodule Volta.Core.MixProject do
 
   defp deps do
     [
-      {:testing, only: :dev, in_umbrella: true},
+      {:puppeteer, only: :dev, in_umbrella: true},
       {:mix_test_watch, "~> 0.8", only: :dev, runtime: false},
       {:hkdf, "~> 0.1.0"},
       {:enacl, "~> 0.17.2"},

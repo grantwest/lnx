@@ -21,6 +21,8 @@ defmodule Volta.Core.CommitmentSecrets do
     :crypto.strong_rand_bytes(32)
   end
 
+  def starting_index(), do: 281474976710655
+
   def commitment(seed, index) do
     b = 1 <<< 47
     # b will be used as a mask, and after each use

@@ -1,5 +1,6 @@
 defmodule Volta.LightningMsgTest do
   use ExUnit.Case, async: true
+  alias Volta.Core.TestUtils.Random
   alias Volta.LightningMsg
   alias Volta.LightningMsg.UnknownMsg
   alias Volta.LightningMsg.InitMsg
@@ -11,6 +12,12 @@ defmodule Volta.LightningMsgTest do
   alias Volta.LightningMsg.FundingCreatedMsg
   alias Volta.LightningMsg.FundingSignedMsg
   alias Volta.LightningMsg.FundingLockedMsg
+  alias Volta.LightningMsg.ShutdownMsg
+  alias Volta.LightningMsg.ClosingSignedMsg
+  alias Volta.LightningMsg.UpdateAddHtlcMsg
+  alias Volta.LightningMsg.UpdateFulfillHtlcMsg
+  alias Volta.LightningMsg.UpdateFailHtlcMsg
+  alias Volta.LightningMsg.UpdateFailMalformedHtlcMsg
 
   test "parse unknown message" do
     msg_binary = <<
@@ -84,12 +91,12 @@ defmodule Volta.LightningMsgTest do
   end
 
   test "parse & encode open_channel msg" do
-    funding_pubkey =             <<:rand.uniform(9999)::size(264)>>
-    revocation_basepoint =       <<:rand.uniform(9999)::size(264)>>
-    payment_basepoint =          <<:rand.uniform(9999)::size(264)>>
-    delayed_payment_basepoint =  <<:rand.uniform(9999)::size(264)>>
-    htlc_basepoint =             <<:rand.uniform(9999)::size(264)>>
-    first_per_commitment_point = <<:rand.uniform(9999)::size(264)>>
+    funding_pubkey =             Random.bytes(33)
+    revocation_basepoint =       Random.bytes(33)
+    payment_basepoint =          Random.bytes(33)
+    delayed_payment_basepoint =  Random.bytes(33)
+    htlc_basepoint =             Random.bytes(33)
+    first_per_commitment_point = Random.bytes(33)
 
     msg_binary = <<
       0, 32,                   # type = 32
@@ -142,12 +149,12 @@ defmodule Volta.LightningMsgTest do
   end
 
   test "parse & encode accept_channel msg" do
-    funding_pubkey =             <<:rand.uniform(9999)::size(264)>>
-    revocation_basepoint =       <<:rand.uniform(9999)::size(264)>>
-    payment_basepoint =          <<:rand.uniform(9999)::size(264)>>
-    delayed_payment_basepoint =  <<:rand.uniform(9999)::size(264)>>
-    htlc_basepoint =             <<:rand.uniform(9999)::size(264)>>
-    first_per_commitment_point = <<:rand.uniform(9999)::size(264)>>
+    funding_pubkey =             Random.bytes(33)
+    revocation_basepoint =       Random.bytes(33)
+    payment_basepoint =          Random.bytes(33)
+    delayed_payment_basepoint =  Random.bytes(33)
+    htlc_basepoint =             Random.bytes(33)
+    first_per_commitment_point = Random.bytes(33)
 
     msg_binary = <<
       0, 33,                   # type = 33
@@ -190,7 +197,7 @@ defmodule Volta.LightningMsgTest do
   end
 
   test "parse & encode funding_created msg" do
-    signature = <<:rand.uniform(9999)::size(512)>>
+    signature = Random.bytes(64)
 
     msg_binary = <<
       0, 34,  # type = 34
@@ -211,7 +218,7 @@ defmodule Volta.LightningMsgTest do
   end
 
   test "parse & encode funding_signed msg" do
-    signature =  <<:rand.uniform(9999)::size(512)>>
+    signature = Random.bytes(64)
 
     msg_binary = <<
       0, 35,  # type = 35
@@ -228,7 +235,7 @@ defmodule Volta.LightningMsgTest do
   end
 
   test "parse & encode funding_locked msg" do
-    next_per_commitment_point =  <<:rand.uniform(9999)::size(264)>>
+    next_per_commitment_point = Random.bytes(33)
 
     msg_binary = <<
       0, 36,  # type = 36
@@ -244,20 +251,118 @@ defmodule Volta.LightningMsgTest do
     assert LightningMsg.encode(msg) == msg_binary
   end
 
-  # test "parse & encode update_add_htlc msg" do
-  #   next_per_commitment_point =  <<:rand.uniform(9999)::size(264)>>
+  test "parse & encode shutdown msg" do
+    msg_binary = <<
+      0, 38,      # type = 36
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
+      0, 4,       # len = 4
+      1, 2, 3, 4, # scriptpubkey = 2
+    >> 
 
-  #   msg_binary = <<
-  #     0, 36,  # type = 36
-  #     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
-  #   >> 
-  #   <> next_per_commitment_point
+    msg = %ShutdownMsg{
+      channel_id: 2,
+      scriptpubkey: <<1, 2, 3, 4>>,
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
 
-  #   msg = %FundingLockedMsg{
-  #     channel_id: 2,
-  #     next_per_commitment_point: next_per_commitment_point
-  #   }
-  #   assert LightningMsg.parse(msg_binary) == msg
-  #   assert LightningMsg.encode(msg) == msg_binary
-  # end
+  test "parse & encode closing_signed msg" do
+    signature = Random.bytes(64)
+    msg_binary = <<
+      0, 39,      # type = 36
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
+      0, 0, 0, 0, 0, 0, 0, 4, # fee_satoshi = 4
+    >> <> signature
+
+    msg = %ClosingSignedMsg{
+      channel_id: 2,
+      fee_satoshi: 4,
+      signature: signature,
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
+
+  test "parse & encode update_add_htlc msg" do
+    onion_packet = Random.bytes(1366)
+
+    msg_binary = <<
+      0, 128,  # type = 128
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
+      0, 0, 0, 0, 0, 0, 0, 8, # id = 8
+      0, 0, 0, 0, 0, 0, 0, 5, # amount_msat = 5
+      1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 8, 9, # payment_hash
+      0, 0, 0, 3, # cltv_expiry
+    >> <> onion_packet
+
+    msg = %UpdateAddHtlcMsg{
+      channel_id: 2,
+      id: 8,
+      amount_msat: 5,
+      payment_hash: <<1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 8, 9>>,
+      cltv_expiry: 3,
+      onion_routing_packet: onion_packet,
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
+
+  test "parse & encode update_fulfill_htlc msg" do
+    preimage = Random.bytes(32)
+
+    msg_binary = <<
+      0, 130,  # type = 130
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
+      0, 0, 0, 0, 0, 0, 0, 8, # id = 8
+    >> <> preimage
+
+    msg = %UpdateFulfillHtlcMsg{
+      channel_id: 2,
+      id: 8,
+      payment_preimage: preimage,
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
+
+  test "parse & encode update_fail_htlc msg" do
+    reason = "this is the reason"
+
+    msg_binary = <<
+      0, 131,  # type = 131
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
+      0, 0, 0, 0, 0, 0, 0, 8, # id = 8
+      0, 18, # len = 18
+    >> <> reason
+
+    msg = %UpdateFailHtlcMsg{
+      channel_id: 2,
+      id: 8,
+      reason: "this is the reason",
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
+
+  test "parse & encode update_fail_malformed_htlc msg" do
+    sha256 = Random.bytes(32)
+    msg_binary = <<
+      0, 135,  # type = 135
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, # channel_id = 2
+      0, 0, 0, 0, 0, 0, 0, 8, # id = 8
+      sha256::bytes(),
+      0, 19, # failure_code = 19
+    >>
+
+    msg = %UpdateFailMalformedHtlcMsg{
+      channel_id: 2,
+      id: 8,
+      sha256_of_onion: sha256,
+      failure_code: 19,
+    }
+    assert LightningMsg.parse(msg_binary) == msg
+    assert LightningMsg.encode(msg) == msg_binary
+  end
+
 end

@@ -189,8 +189,8 @@ defmodule Volta.Core.OnionTest do
     associated_data = <<>>
     packet = OnionPacketV0.create(hops, session_key[:priv], associated_data)
     packet_bin = OnionPacketV0.encode(packet)
-    _packet = OnionPacketV0.decode(packet_bin)
-    # {:last, hop_bin} = OnionPacketV0.unwrap(packet, hop_key)
+    packet = OnionPacketV0.decode(packet_bin)
+    {:last, hop_bin} = OnionPacketV0.unwrap(packet, hop_key)
     # assert PerHop.parse(hop_bin) == hop
   end
 

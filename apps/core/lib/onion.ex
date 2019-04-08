@@ -43,24 +43,29 @@ defmodule Volta.Core.Onion do
       packet
     end
 
-    # def unwrap(packet, key) do
-    #   shared_secret = generate_shared_secret()
-    #   rho_key = generate_key("rho", shared_secret)
-    #   stream_bytes = generate_cipher_stream(rho_key, @num_stream_bytes)
-    #   padding_bits = @hop_data_size * 8
-    #   header_with_padding = packet.hops_data <> <<0::size(padding_bits)>>
-    #   decrypted = :crypto.exor(header_with_padding, stream_bytes)
+    def unwrap(packet, key) do
 
-    #   {:ok, ecdh_result} = :libsecp256k1.ec_pubkey_tweak_mul(key[:pub], ephem_key)
-    #   hop_shared_secret = :crypto.hash(:sha256, KeyUtils.compress(ecdh_result))
-
-    #   blinding_factor = :crypto.hash(:sha256, KeyUtils.compress(ephem_pub_key) <> hop_shared_secret)
-
-    # end
-
-    # defp generate_shared_secret() do
       
-    # end
+      {:ok, ephem_key} = :libsecp256k1.ec_privkey_tweak_mul(ephem_key, blinding_factor)
+
+
+      shared_secret = generate_shared_secret()
+      rho_key = generate_key("rho", shared_secret)
+      stream_bytes = generate_cipher_stream(rho_key, @num_stream_bytes)
+      padding_bits = @hop_data_size * 8
+      header_with_padding = packet.hops_data <> <<0::size(padding_bits)>>
+      decrypted = :crypto.exor(header_with_padding, stream_bytes)
+
+      {:ok, ecdh_result} = :libsecp256k1.ec_pubkey_tweak_mul(key[:pub], ephem_key)
+      hop_shared_secret = :crypto.hash(:sha256, KeyUtils.compress(ecdh_result))
+
+      blinding_factor = :crypto.hash(:sha256, KeyUtils.compress(ephem_pub_key) <> hop_shared_secret)
+
+    end
+
+    defp generate_shared_secret() do
+      
+    end
 
     def create_with_intermediates(payment_path, session_key, associated_data) do
 
